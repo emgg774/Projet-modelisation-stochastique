@@ -1,7 +1,7 @@
 import pyAgrum as gum
 import pandas as pd
 import os
-import pyAgrum.lib.ipython as gnb 
+# import pyAgrum.lib.ipython as gnb 
 import numpy as np
 
 class Projet:
