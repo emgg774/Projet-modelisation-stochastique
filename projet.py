@@ -1,203 +1,133 @@
+import pyAgrum as gum
 import pandas as pd
 import os
-
-ot_odr_filename = os.path.join(".", "OT_ODR.csv.bz2")
-ot_odr_df = pd.read_csv(ot_odr_filename, compression="bz2", sep=";")
-longueur_ot_odr_df = len(ot_odr_df)
-
-
-equipements_filename = os.path.join(".", 'EQUIPEMENTS.csv')
-equipements_df = pd.read_csv(equipements_filename, sep=";")
-
-# Liste déroulante pour SIG_CONTEXTE
-import pandas as pd
-
-df = pd.DataFrame(ot_odr_df['SIG_CONTEXTE'])
-
-# Création du dictionnaire
-dictionnaire = {}
-
-for _, row in df.iterrows():
-    sig_contexte = row['SIG_CONTEXTE']
-    contexte_parts = sig_contexte.split('/')
-    
-    # Parcourir les parties du contexte
-    current_dict = dictionnaire
-    for part in contexte_parts:
-        # Vérifier si la partie existe dans le dictionnaire
-        if part not in current_dict:
-            current_dict[part] = {}
-        
-        # Passer au dictionnaire interne
-        current_dict = current_dict[part]
-
-
-
-## Stocker la liste dictionnaire
-
-import pickle
-
-path = 'liste_deroulante_SIG_CONTEXTE.pkl'
-
-# Sérialisation du dictionnaire
-with open(path,'wb') as fichier:
-    pickle.dump(dictionnaire, fichier)
-
-# Désérialisation du dictionnaire
-with open(path, 'rb') as fichier:
-    dictionnaire = pickle.load(fichier)
-
-
-# Normaliser le texte
-# ### Supprimer les caractères spéciaux
-
-# import unicodedata
-
-# def Replace_accents(word):
-#     try:
-#         word = unicodedata.normalize('NFD', word).encode('ascii', 'ignore').decode('utf-8')
-#     except:
-#         pass
-#     return word
-
-
-# def Delete_special_caractere(word):
-#     word = Replace_accents(word)
-#     try:
-#         word = word.replace('\\', '_').replace('/', '_').replace('-', '_').replace("'", ' ').replace('"', ' ').replace('`', ' ').replace('!', ' ').replace('@', ' ').replace('#', ' ').replace('$', ' ').replace('%', ' ').replace('^', ' ').replace('&', ' ').replace('*', ' ').replace('(', ' ').replace(')', ' ').replace('[', ' ').replace(']', ' ').replace('{', ' ').replace('}', ' ').replace('<', ' ').replace('>', ' ').replace('~', ' ').replace(':', ' ').replace(';', ' ').replace('.', ' ').replace(',', ' ').replace('?', ' ').replace('+', ' ').replace('=', ' ').replace('|', ' ').replace('\\', ' ').replace('\n', ' ').replace('\r', ' ')
-#     except:
-#         pass
-#     return word
-
-
-var_cat = ['ODR_LIBELLE', 'TYPE_TRAVAIL',
-           'SYSTEM_N1', 'SYSTEM_N2', 'SYSTEM_N3', 
-           'SIG_ORGANE', 'SIG_CONTEXTE', 'SIG_OBS', 'LIGNE',
-           'SIG_CONTEXTE']
-for var in var_cat:
-    ot_odr_df[var] = ot_odr_df[var].astype('category')
-
-
-### PyAgrum
-import pyAgrum as gum
-
-rb_projet =  gum.BayesNet("Projet")
-
-# Creation du réseau
-
-def Create_noeud(nom_du_noeud, ot_odr_df):
-    Nombre_element = ot_odr_df[nom_du_noeud].value_counts()
-    va = gum.LabelizedVariable(nom_du_noeud, nom_du_noeud, len(Nombre_element))
-    i = 0
-    for liste in ot_odr_df[nom_du_noeud].unique():
-        # liste = Delete_special_caractere(liste)
-        try:
-            va.changeLabel(i, str(liste))
-        except gum.DuplicateElement as e:
-            i -= 1
-            print(f"Erreur de duplication dans le noeud '{nom_du_noeud}' pour la valeur : {liste}")
-        i += 1
-    return va
-
-## Création des noeud
-### Création du noeud de SIG_ORGANE
-
-va_SIG_ORGANE = Create_noeud('SIG_ORGANE',ot_odr_df)
-
-### Création du noeud de SIG_OBS
-va_SIG_OBS = Create_noeud('SIG_OBS',ot_odr_df)
-
-### Création du noeud de SYSTEM_N1
-va_SYSTEM_N1 = Create_noeud('SYSTEM_N1',ot_odr_df)
-
-### Création du noeud de SYSTEM_N2
-va_SYSTEM_N2 = Create_noeud('SYSTEM_N2',ot_odr_df)
-
-### Création du noeud de SYSTEM_N3
-va_SYSTEM_N3 = Create_noeud('SYSTEM_N3',ot_odr_df)
-
-### Création du noeud de TYPE_TRAVAIL
-va_TYPE_TRAVAIL = Create_noeud('TYPE_TRAVAIL',ot_odr_df)
-
-### Création du noeud de ODR_LIBELLE
-va_ODR_LIBELLE = Create_noeud('ODR_LIBELLE',ot_odr_df)
-
-### Ajout des noeuds
-for va in [va_SIG_ORGANE,va_SYSTEM_N1,va_SYSTEM_N2,va_SYSTEM_N3,va_TYPE_TRAVAIL,va_ODR_LIBELLE,va_SIG_OBS]:
-    rb_projet.add(va)
-
-
-## Création des fixations
-
-rb_projet.addArc("SIG_ORGANE","SYSTEM_N1")
-rb_projet.addArc("SIG_OBS","SYSTEM_N1")
-
-rb_projet.addArc("SYSTEM_N1","SYSTEM_N2")
-rb_projet.addArc("SYSTEM_N2","SYSTEM_N3")
-
-rb_projet.addArc("SYSTEM_N3","ODR_LIBELLE")
-
-rb_projet.addArc("ODR_LIBELLE","TYPE_TRAVAIL")
-
-
-### Apprentissage des LPC
-
-import pyagrum_extra
-rb_projet.fit_bis(ot_odr_df, verbose_mode=True)
-
-rb_projet.cpt("SIG_OBS")
-rb_projet.cpt("SYSTEM_N1")
-
-pred_prob = rb_projet.predict_proba(ot_odr_df[["SIG_OBS"]].iloc[-1000:], var_target="SYSTEM_N1", show_progress=True)
-print("Probabilité des prédictions : ")
-print(pred_prob)
-
-pred = rb_projet.predict(ot_odr_df[["SIG_OBS"]].iloc[-1000:], var_target="SYSTEM_N1", show_progress=True)
-print("Prédictions : ")
-print(pred)
-
+import pyAgrum.lib.ipython as gnb 
 import numpy as np
 
-def afficher_probabilites_tableau(sig_organe, sig_obs, rb_projet):
-    dictionnaire = {}
-    colonnes = ot_odr_df['SYSTEM_N1'].unique()
-    colonnes2 = ot_odr_df['SYSTEM_N2'].unique()
-    colonnes3 = ot_odr_df['SYSTEM_N3'].unique()
-    colonnes4 = ot_odr_df['ODR_LIBELLE'].unique()
-    colonnes5 = ot_odr_df['TYPE_TRAVAIL'].unique()
+class Projet:
+    def __init__(self):
+        self.ot_odr_df = pd.read_csv(os.path.join(".", "OT_ODR.csv.bz2"), compression="bz2", sep=";")
+        self.equipements_df = pd.read_csv(os.path.join(".", 'EQUIPEMENTS.csv'), sep=";")
+        self.rb_projet =  gum.BayesNet("Projet")
 
-    # Calculer la probabilité conditionnelle pour SYSTEM_N1
-    proba_system_n1 = rb_projet.cpt("SYSTEM_N1")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}]
+        var_cat = ['ODR_LIBELLE', 'TYPE_TRAVAIL',
+           'SYSTEM_N1', 'SYSTEM_N2', 'SYSTEM_N3', 
+           'SIG_ORGANE', 'SIG_CONTEXTE', 'SIG_OBS',
+           ]
+        for var in var_cat:
+            self.ot_odr_df[var] = self.ot_odr_df[var].astype('category')
 
-    # Définir la valeur choisie pour SIG_ORGANE
-    rb_projet.cpt("SIG_ORGANE")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}] = 1.0
+        def Create_noeud(nom_du_noeud, ot_odr_df):
+            Nombre_element = ot_odr_df[nom_du_noeud].value_counts()
+            va = gum.LabelizedVariable(nom_du_noeud, nom_du_noeud, len(Nombre_element))
+            i = 0
+            for liste in ot_odr_df[nom_du_noeud].unique():
+                try:
+                    va.changeLabel(i, str(liste))
+                except gum.DuplicateElement as e:
+                    i -= 1
+                    print(f"Erreur de duplication dans le noeud '{nom_du_noeud}' pour la valeur : {liste}")
+                i += 1
+            return va
+        va_SIG_ORGANE = Create_noeud('SIG_ORGANE',self.ot_odr_df)
+        va_SIG_OBS = Create_noeud('SIG_OBS',self.ot_odr_df)
+        va_SYSTEM_N1 = Create_noeud('SYSTEM_N1',self.ot_odr_df)
+        va_SYSTEM_N2 = Create_noeud('SYSTEM_N2',self.ot_odr_df)
+        va_SYSTEM_N3 = Create_noeud('SYSTEM_N3',self.ot_odr_df)
+        va_TYPE_TRAVAIL = Create_noeud('TYPE_TRAVAIL',self.ot_odr_df)
+        va_ODR_LIBELLE = Create_noeud('ODR_LIBELLE',self.ot_odr_df)
 
-    # Calculer les probabilités pour SYSTEM_N2
-    proba_system_n2 = np.dot(proba_system_n1, rb_projet.cpt("SYSTEM_N2")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+        for va in [va_SIG_ORGANE,va_SYSTEM_N1,va_SYSTEM_N2,va_SYSTEM_N3,va_TYPE_TRAVAIL,va_ODR_LIBELLE,va_SIG_OBS]:
+            self.rb_projet.add(va)
+        self.rb_projet.addArc("SIG_ORGANE","SYSTEM_N1")
+        self.rb_projet.addArc("SIG_OBS","SYSTEM_N1")
 
-    # Calculer les probabilités pour SYSTEM_N3
-    proba_system_n3 = np.dot(proba_system_n2, rb_projet.cpt("SYSTEM_N3")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+        self.rb_projet.addArc("SYSTEM_N1","SYSTEM_N2")
+        self.rb_projet.addArc("SYSTEM_N2","SYSTEM_N3")
 
-    # Calculer les probabilités pour ODR_LIBELLE
-    proba_system_lib = np.dot(proba_system_n3, rb_projet.cpt("ODR_LIBELLE")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+        self.rb_projet.addArc("SYSTEM_N3","ODR_LIBELLE")
 
-    # Calculer les probabilités pour TYPE_TRAVAIL
-    proba_system_tra = np.dot(proba_system_lib, rb_projet.cpt("TYPE_TRAVAIL")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+        self.rb_projet.addArc("ODR_LIBELLE","TYPE_TRAVAIL")
 
-    # Créer un dictionnaire avec l'association nom de colonne et probabilité
-    dictionnaire = {
-        'SYSTEM_N1': dict(zip(colonnes, proba_system_n1)),
-        'SYSTEM_N2': dict(zip(colonnes2, proba_system_n2)),
-        'SYSTEM_N3': dict(zip(colonnes3, proba_system_n3)),
-        'ODR_LIBELLE': dict(zip(colonnes4, proba_system_lib)),
-        'TYPE_TRAVAIL': dict(zip(colonnes5, proba_system_tra))
-    }
+        def Create_Probabilite(df,element,all_element):
+            longueur_df = len(df)
+            count_element = []
+            for liste in all_element:
+                if liste in df[element].unique():
+                    count_element.append(len(df.loc[df[element] == liste]) / longueur_df)
+                else: # On met un 0 si le champ n'est pas remplit, si la probabilité n'existe pas
+                    count_element.append(0)
+            total_prob = sum(count_element)
+            if total_prob == 0:
+                return [1/len(count_element)]*len(count_element)
+                
+            return count_element
+        self.rb_projet.cpt("SIG_ORGANE")[:] = Create_Probabilite(self.ot_odr_df,"SIG_ORGANE",self.ot_odr_df["SIG_ORGANE"].unique())
+        self.rb_projet.cpt("SIG_OBS")[:] = Create_Probabilite(self.ot_odr_df,"SIG_OBS",self.ot_odr_df["SIG_OBS"].unique())
 
-    return dictionnaire
+        for sig_organe in self.ot_odr_df['SIG_ORGANE'].unique():
+            ot_odf_sig_organe = self.ot_odr_df.loc[self.ot_odr_df['SIG_ORGANE'] == sig_organe]
+            
+            for sig_obs in self.ot_odr_df['SIG_OBS'].unique():
+                ot_odf_sig_obs = ot_odf_sig_organe.loc[ot_odf_sig_organe['SIG_OBS'] == sig_obs]
 
-sig_organe_choisi = "ECLAIRAGE FEUX EXTERIEURS"
-sig_obs_choisi = "CASSE"
-# sig_obs_choisi = "NE FONCTIONNE PAS"
+                self.rb_projet.cpt("SYSTEM_N1")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}] = Create_Probabilite(ot_odf_sig_obs, "SYSTEM_N1", self.ot_odr_df["SYSTEM_N1"].unique())
 
-sss = afficher_probabilites_tableau(sig_organe_choisi, sig_obs_choisi, rb_projet)
-sss['TYPE_TRAVAIL']
+        for liste_N1 in self.ot_odr_df['SYSTEM_N1'].unique():
+            ot_odf_SYSTEM_N1 = self.ot_odr_df.loc[self.ot_odr_df['SYSTEM_N1'] == liste_N1]
+
+            self.rb_projet.cpt("SYSTEM_N2")[{"SYSTEM_N1":liste_N1}] = Create_Probabilite(ot_odf_SYSTEM_N1,"SYSTEM_N2",self.ot_odr_df["SYSTEM_N2"].unique())
+
+        for liste_N2 in self.ot_odr_df['SYSTEM_N2'].unique():
+            ot_odf_SYSTEM_N2 = self.ot_odr_df.loc[self.ot_odr_df['SYSTEM_N2'] == liste_N2]
+            self.rb_projet.cpt("SYSTEM_N3")[{"SYSTEM_N2":liste_N2}] = Create_Probabilite(ot_odf_SYSTEM_N2,"SYSTEM_N3",self.ot_odr_df["SYSTEM_N3"].unique())
+        
+        for liste_N3 in self.ot_odr_df['SYSTEM_N3'].unique():
+            ot_odf_SYSTEM_N3 = self.ot_odr_df.loc[self.ot_odr_df['SYSTEM_N3'] == liste_N3]
+            self.rb_projet.cpt("ODR_LIBELLE")[{"SYSTEM_N3":liste_N3}] = Create_Probabilite(ot_odf_SYSTEM_N3,"ODR_LIBELLE",self.ot_odr_df["ODR_LIBELLE"].unique())
+
+        for liste_ODR_LIBELLE in self.ot_odr_df['ODR_LIBELLE'].unique():
+            ot_odf_ODR_LIBELLE = self.ot_odr_df.loc[self.ot_odr_df['ODR_LIBELLE'] == liste_ODR_LIBELLE]
+            self.rb_projet.cpt("TYPE_TRAVAIL")[{"ODR_LIBELLE":liste_ODR_LIBELLE}] = Create_Probabilite(ot_odf_ODR_LIBELLE,"TYPE_TRAVAIL",self.ot_odr_df["TYPE_TRAVAIL"].unique())
+
+    def Affichage_rb_projet(self):
+        gnb.showBN(self.rb_projet)
+    
+
+    def afficher_probabilites_tableau(self,sig_organe, sig_obs):
+        dictionnaire = {}
+        colonnes = self.ot_odr_df['SYSTEM_N1'].unique()
+        colonnes2 = self.ot_odr_df['SYSTEM_N2'].unique()
+        colonnes3 = self.ot_odr_df['SYSTEM_N3'].unique()
+        colonnes4 = self.ot_odr_df['ODR_LIBELLE'].unique()
+        colonnes5 = self.ot_odr_df['TYPE_TRAVAIL'].unique()
+
+        # Calculer la probabilité conditionnelle pour SYSTEM_N1
+        proba_system_n1 = self.rb_projet.cpt("SYSTEM_N1")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}]
+
+        # Définir la valeur choisie pour SIG_ORGANE
+        self.rb_projet.cpt("SIG_ORGANE")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}] = 1.0
+
+        # Calculer les probabilités pour SYSTEM_N2
+        proba_system_n2 = np.dot(proba_system_n1, self.rb_projet.cpt("SYSTEM_N2")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+
+        # Calculer les probabilités pour SYSTEM_N3
+        proba_system_n3 = np.dot(proba_system_n2, self.rb_projet.cpt("SYSTEM_N3")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+
+        # Calculer les probabilités pour ODR_LIBELLE
+        proba_system_lib = np.dot(proba_system_n3, self.rb_projet.cpt("ODR_LIBELLE")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+
+        # Calculer les probabilités pour TYPE_TRAVAIL
+        proba_system_tra = np.dot(proba_system_lib, self.rb_projet.cpt("TYPE_TRAVAIL")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}])
+
+        # Créer un dictionnaire avec l'association nom de colonne et probabilité
+        dictionnaire = {
+            'SYSTEM_N1': dict(zip(colonnes, proba_system_n1)),
+            'SYSTEM_N2': dict(zip(colonnes2, proba_system_n2)),
+            'SYSTEM_N3': dict(zip(colonnes3, proba_system_n3)),
+            'ODR_LIBELLE': dict(zip(colonnes4, proba_system_lib)),
+            'TYPE_TRAVAIL': dict(zip(colonnes5, proba_system_tra))
+        }
+
+        return dictionnaire
+    
