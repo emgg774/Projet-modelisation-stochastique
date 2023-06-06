@@ -1,0 +1,103 @@
+!pip install pyAgrum
+import pyAgrum as gum
+import pandas as pd
+import os
+import pyAgrum.lib.ipython as gnb 
+
+
+class Projet:
+    def __init__(self):
+        self.ot_odr_df = pd.read_csv(os.path.join(".", "OT_ODR.csv.bz2"), compression="bz2", sep=";")
+        self.equipements_df = pd.read_csv(os.path.join(".", 'EQUIPEMENTS.csv'), sep=";")
+        self.rb_projet =  gum.BayesNet("Projet")
+
+    def Initialiser(self):
+        var_cat = ['ODR_LIBELLE', 'TYPE_TRAVAIL',
+           'SYSTEM_N1', 'SYSTEM_N2', 'SYSTEM_N3', 
+           'SIG_ORGANE', 'SIG_CONTEXTE', 'SIG_OBS',
+           ]
+        for var in var_cat:
+            self.ot_odr_df[var] = self.ot_odr_df[var].astype('category')
+
+    def Initialisation_rb_projet(self,ot_odr_df):
+
+        def Create_noeud(nom_du_noeud, ot_odr_df):
+            Nombre_element = ot_odr_df[nom_du_noeud].value_counts()
+            va = gum.LabelizedVariable(nom_du_noeud, nom_du_noeud, len(Nombre_element))
+            i = 0
+            for liste in ot_odr_df[nom_du_noeud].unique():
+                try:
+                    va.changeLabel(i, str(liste))
+                except gum.DuplicateElement as e:
+                    i -= 1
+                    print(f"Erreur de duplication dans le noeud '{nom_du_noeud}' pour la valeur : {liste}")
+                i += 1
+            return va
+        va_SIG_ORGANE = Create_noeud('SIG_ORGANE',ot_odr_df)
+        va_SIG_OBS = Create_noeud('SIG_OBS',ot_odr_df)
+        va_SYSTEM_N1 = Create_noeud('SYSTEM_N1',ot_odr_df)
+        va_SYSTEM_N2 = Create_noeud('SYSTEM_N2',ot_odr_df)
+        va_SYSTEM_N3 = Create_noeud('SYSTEM_N3',ot_odr_df)
+        va_TYPE_TRAVAIL = Create_noeud('TYPE_TRAVAIL',ot_odr_df)
+        va_ODR_LIBELLE = Create_noeud('ODR_LIBELLE',ot_odr_df)
+
+        for va in [va_SIG_ORGANE,va_SYSTEM_N1,va_SYSTEM_N2,va_SYSTEM_N3,va_TYPE_TRAVAIL,va_ODR_LIBELLE,va_SIG_OBS]:
+            self.rb_projet.add(va)
+        self.rb_projet.addArc("SIG_ORGANE","SYSTEM_N1")
+        self.rb_projet.addArc("SIG_OBS","SYSTEM_N1")
+
+        self.rb_projet.addArc("SYSTEM_N1","SYSTEM_N2")
+        self.rb_projet.addArc("SYSTEM_N2","SYSTEM_N3")
+
+        self.rb_projet.addArc("SYSTEM_N3","ODR_LIBELLE")
+
+        self.rb_projet.addArc("ODR_LIBELLE","TYPE_TRAVAIL")
+
+    def Affichage_rb_projet(self):
+        gnb.showBN(self.rb_projet)
+    
+
+    def Calcul_des_probabilite(self):
+
+        def Create_Probabilite(df,element,all_element):
+            longueur_df = len(df)
+            count_element = []
+            for liste in all_element:
+                if liste in df[element].unique():
+                    count_element.append(len(df.loc[df[element] == liste]) / longueur_df)
+                else: # On met un 0 si le champ n'est pas remplit, si la probabilité n'existe pas
+                    count_element.append(0)
+            total_prob = sum(count_element)
+            if total_prob == 0:
+                return [1/len(count_element)]*len(count_element)
+                
+            return count_element
+        self.rb_projet.cpt("SIG_ORGANE")[:] = Create_Probabilite(self.ot_odr_df,"SIG_ORGANE",self.ot_odr_df["SIG_ORGANE"].unique())
+        self.rb_projet.cpt("SIG_OBS")[:] = Create_Probabilite(self.ot_odr_df,"SIG_OBS",self.ot_odr_df["SIG_OBS"].unique())
+
+        for sig_organe in self.ot_odr_df['SIG_ORGANE'].unique():
+            ot_odf_sig_organe = self.ot_odr_df.loc[self.ot_odr_df['SIG_ORGANE'] == sig_organe]
+            
+            for sig_obs in self.ot_odr_df['SIG_OBS'].unique():
+                ot_odf_sig_obs = ot_odf_sig_organe.loc[ot_odf_sig_organe['SIG_OBS'] == sig_obs]
+
+                self.rb_projet.cpt("SYSTEM_N1")[{"SIG_ORGANE": sig_organe, "SIG_OBS": sig_obs}] = Create_Probabilite(ot_odf_sig_obs, "SYSTEM_N1", self.ot_odr_df["SYSTEM_N1"].unique())
+
+        for liste_N1 in self.ot_odr_df['SYSTEM_N1'].unique():
+            ot_odf_SYSTEM_N1 = self.ot_odr_df.loc[self.ot_odr_df['SYSTEM_N1'] == liste_N1]
+
+            self.rb_projet.cpt("SYSTEM_N2")[{"SYSTEM_N1":liste_N1}] = Create_Probabilite(ot_odf_SYSTEM_N1,"SYSTEM_N2",self.ot_odr_df["SYSTEM_N2"].unique())
+
+        for liste_N2 in self.ot_odr_df['SYSTEM_N2'].unique():
+            ot_odf_SYSTEM_N2 = self.ot_odr_df.loc[self.ot_odr_df['SYSTEM_N2'] == liste_N2]
+            self.rb_projet.cpt("SYSTEM_N3")[{"SYSTEM_N2":liste_N2}] = Create_Probabilite(ot_odf_SYSTEM_N2,"SYSTEM_N3",self.ot_odr_df["SYSTEM_N3"].unique())
+        
+        for liste_N3 in self.ot_odr_df['SYSTEM_N3'].unique():
+            ot_odf_SYSTEM_N3 = self.ot_odr_df.loc[self.ot_odr_df['SYSTEM_N3'] == liste_N3]
+            self.rb_projet.cpt("ODR_LIBELLE")[{"SYSTEM_N3":liste_N3}] = Create_Probabilite(ot_odf_SYSTEM_N3,"ODR_LIBELLE",self.ot_odr_df["ODR_LIBELLE"].unique())
+
+        for liste_ODR_LIBELLE in ot_odr_df['ODR_LIBELLE'].unique():
+            ot_odf_ODR_LIBELLE = ot_odr_df.loc[ot_odr_df['ODR_LIBELLE'] == liste_ODR_LIBELLE]
+            liste_ODR_LIBELLE = Delete_special_caractere(liste_ODR_LIBELLE)
+            rb_projet.cpt("TYPE_TRAVAIL")[{"ODR_LIBELLE":liste_ODR_LIBELLE}] = Create_Probabilite(ot_odf_ODR_LIBELLE,"TYPE_TRAVAIL",ot_odr_df["TYPE_TRAVAIL"].unique())
+        rb_projet.cpt("TYPE_TRAVAIL")
