@@ -11,6 +11,7 @@ app = dash.Dash(__name__)
 
 # Mise en place de la mise en page de l'application
 app.layout = html.Div([
+    html.H1('Projet modélisation stochastique'),
     html.H2('Sélection des variables'),
     html.Label('SIG_ORGANE :'),
     dcc.Dropdown(
@@ -27,7 +28,7 @@ app.layout = html.Div([
         multi=False
     ),
     html.H2('Résultats : '),
-    html.H2(children='', id='specify-text', style={"color": "red"}),
+    html.H2(children='', id='specify-text', style={"color": "red", "text-decoration": "underline"}),
     dcc.Graph(id='graph-system-n1'),
     dcc.Graph(id='graph-system-n2'),
     dcc.Graph(id='graph-system-n3'),
@@ -50,8 +51,6 @@ def update_graph(sig_org, sig_obs):
     title = ""
     results = None # query julien script
 
-    print("sig_org : ", sig_org)
-
     if "None" in [sig_org, sig_obs]:
         title += "Please specify : "
         if sig_org == "None":
@@ -62,6 +61,7 @@ def update_graph(sig_org, sig_obs):
 
     for graph in PRED_VARIABLES:
         if len(results[graph].keys()) >= 5:
+            results[graph] = sorted(results[graph].items(), key=lambda _x: _x[1])
             x = results[graph].keys()[:5]
             y = results[graph].values()[:5]
             n = 5
