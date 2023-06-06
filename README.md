@@ -2,7 +2,7 @@
 
 ### Setup project
 
-clone project
+Clone project
 
 ```
 git clone https://github.com/emgg774/Projet-modelisation-stochastique.git
@@ -14,7 +14,7 @@ Change current directory
 cd Projet-modelisation-stochastique
 ```
 
-install requirements
+Install requirements
 
 ```
 pip3 install -r requirements.txt
