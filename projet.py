@@ -6,18 +6,23 @@ import numpy as np
 
 class Projet:
     def __init__(self):
+        # Chargement des données à partir des fichiers CSV
         self.ot_odr_df = pd.read_csv(os.path.join(".", "OT_ODR.csv.bz2"), compression="bz2", sep=";")
         self.equipements_df = pd.read_csv(os.path.join(".", 'EQUIPEMENTS.csv'), sep=";")
         self.rb_projet =  gum.BayesNet("Projet")
-
+        
+        # Variables catégorielles
         var_cat = ['ODR_LIBELLE', 'TYPE_TRAVAIL',
            'SYSTEM_N1', 'SYSTEM_N2', 'SYSTEM_N3', 
            'SIG_ORGANE', 'SIG_CONTEXTE', 'SIG_OBS',
            ]
+        
+        # Conversion des variables en catégories
         for var in var_cat:
             self.ot_odr_df[var] = self.ot_odr_df[var].astype('category')
 
         def Create_noeud(nom_du_noeud, ot_odr_df):
+            # Création d'une variable pour le noeud avec les étiquettes correspondantes
             Nombre_element = ot_odr_df[nom_du_noeud].value_counts()
             va = gum.LabelizedVariable(nom_du_noeud, nom_du_noeud, len(Nombre_element))
             i = 0
@@ -25,10 +30,13 @@ class Projet:
                 try:
                     va.changeLabel(i, str(liste))
                 except gum.DuplicateElement as e:
+                    # En cas de duplication d'une étiquette, ajuster l'indice et afficher un message d'erreur
                     i -= 1
                     print(f"Erreur de duplication dans le noeud '{nom_du_noeud}' pour la valeur : {liste}")
                 i += 1
             return va
+        
+        # Création des variables pour les noeuds du réseau bayésien
         va_SIG_ORGANE = Create_noeud('SIG_ORGANE',self.ot_odr_df)
         va_SIG_OBS = Create_noeud('SIG_OBS',self.ot_odr_df)
         va_SYSTEM_N1 = Create_noeud('SYSTEM_N1',self.ot_odr_df)
@@ -37,8 +45,11 @@ class Projet:
         va_TYPE_TRAVAIL = Create_noeud('TYPE_TRAVAIL',self.ot_odr_df)
         va_ODR_LIBELLE = Create_noeud('ODR_LIBELLE',self.ot_odr_df)
 
+        # Ajout des variables au réseau bayésien
         for va in [va_SIG_ORGANE,va_SYSTEM_N1,va_SYSTEM_N2,va_SYSTEM_N3,va_TYPE_TRAVAIL,va_ODR_LIBELLE,va_SIG_OBS]:
             self.rb_projet.add(va)
+            
+        # Définition des arcs entre les noeuds
         self.rb_projet.addArc("SIG_ORGANE","SYSTEM_N1")
         self.rb_projet.addArc("SIG_OBS","SYSTEM_N1")
 
