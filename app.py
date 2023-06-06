@@ -78,8 +78,12 @@ def update_graph(sig_org, sig_obs):
         ]
         layout = go.Layout(
             title=f'{graph} :',
-            xaxis=dict(title=f'top {n}'),
-            yaxis=dict(title="probability")
+            font_family="Courier New",
+            font_color="blue",
+            title_font_family="Times New Roman",
+            title_font_color="#1a1b1c",
+            xaxis=dict(title=f'TOP {n}'),
+            yaxis=dict(title="probability", range=[0, 1])
         )
         figure = {'data': data, 'layout': layout}
         figures.append(figure)
