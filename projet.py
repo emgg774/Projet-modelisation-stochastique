@@ -73,6 +73,8 @@ class Projet:
                 return [1/len(count_element)]*len(count_element)
                 
             return count_element
+        
+        # Calcul des probabilités conditionnelles pour chaque variable
         self.rb_projet.cpt("SIG_ORGANE")[:] = Create_Probabilite(self.ot_odr_df,"SIG_ORGANE",self.ot_odr_df["SIG_ORGANE"].unique())
         self.rb_projet.cpt("SIG_OBS")[:] = Create_Probabilite(self.ot_odr_df,"SIG_OBS",self.ot_odr_df["SIG_OBS"].unique())
 
