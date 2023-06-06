@@ -1,5 +1,33 @@
 # Projet-modelisation-stochastique
 
-### Setup projecti
+### Setup project
 
-======
+clone project
+
+```
+git clone https://github.com/emgg774/Projet-modelisation-stochastique.git
+```
+
+Change current directory
+
+```
+cd Projet-modelisation-stochastique
+```
+
+install requirements
+
+```
+pip3 install -r requirements.txt
+```
+
+Start dash application
+
+```
+python3 app.py
+```
+
+Go to application in browser
+
+```
+http://127.0.0.1:8050/
+```
