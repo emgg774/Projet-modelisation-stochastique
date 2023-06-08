@@ -3,8 +3,11 @@ from dash import dcc, html
 from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.graph_objs as go
+import projet
 
-from var_case import SIG_OBS_VALUES, SIG_ORG_VALUES, SIG_CONSTRUCTEUR, PRED_VARIABLES
+from var_case import SIG_OBS_VALUES, SIG_ORG_VALUES, CONSTRUCTEUR_VALUES, PRED_VARIABLES
+
+Projet_sujet = projet.Projet()
 
 # Initialisation de l'application Dash
 app = dash.Dash(__name__)
@@ -54,10 +57,10 @@ app.layout = html.Div([
               [Input('sig-organe-dropdown', 'value'),
                Input('sig-obs-dropdown', 'value'),
                Input('sig-constructeur-dropdown', 'value')])
-def update_graph(sig_org, sig_obs):
+def update_graph(sig_org, sig_obs, sig_constructeur):
     figures = []
     title = ""
-    results = None # query julien script
+    results = Projet_sujet.afficher_probabilites_tableau(sig_org, sig_obs, sig_constructeur)
 
     if "None" in [sig_org, sig_obs, sig_constructeur]:
         title += "Please specify : "

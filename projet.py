@@ -153,6 +153,3 @@ class Projet:
 
         return dictionnaire
     
-projet =Projet()
-
-print(projet.afficher_probabilites_tableau("ECLAIRAGE FEUX EXTERIEURS","CASSE","C007"))
