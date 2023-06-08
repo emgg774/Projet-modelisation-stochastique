@@ -1,3 +1,5 @@
+import sys
+
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
@@ -7,8 +9,11 @@ import projet
 
 from var_case import SIG_OBS_VALUES, SIG_ORG_VALUES, CONSTRUCTEUR_VALUES, PRED_VARIABLES
 
+import pickle
+
 Projet_sujet = projet.Projet()
 
+print("jbze")
 # Initialisation de l'application Dash
 app = dash.Dash(__name__)
 
@@ -60,6 +65,12 @@ app.layout = html.Div([
 def update_graph(sig_org, sig_obs, sig_constructeur):
     figures = []
     title = ""
+
+    def Convert(tup):
+        di = {}
+        for a, b in tup:
+            di[a] = b
+        return di
     results = Projet_sujet.afficher_probabilites_tableau(sig_org, sig_obs, sig_constructeur)
 
     if "None" in [sig_org, sig_obs, sig_constructeur]:
@@ -74,9 +85,10 @@ def update_graph(sig_org, sig_obs, sig_constructeur):
 
     for graph in PRED_VARIABLES:
         if len(results[graph].keys()) >= 5:
-            results[graph] = sorted(results[graph].items(), key=lambda _x: _x[1])
-            x = results[graph].keys()[:5]
-            y = results[graph].values()[:5]
+            results[graph] = sorted(results[graph].items(), key=lambda _x: _x[1])[::-1]
+            results[graph] = Convert(results[graph])
+            x = list(results[graph].keys())[:5][::-1]
+            y = list(results[graph].values())[:5][::-1]
             n = 5
         else:
             x = list(results[graph].keys())
@@ -96,9 +108,10 @@ def update_graph(sig_org, sig_obs, sig_constructeur):
             title_font_family="Times New Roman",
             title_font_color="#1a1b1c",
             xaxis=dict(title=f'TOP {n}'),
-            yaxis=dict(title="probability", range=[0, 1])
+            yaxis=dict(title="probability")
         )
         figure = {'data': data, 'layout': layout}
+        print("data figure : ", figure)
         figures.append(figure)
     if len(figures) >= 5:
         return \
