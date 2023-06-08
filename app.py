@@ -30,7 +30,7 @@ app.layout = html.Div([
     html.Label('CONSTRUCTEUR :'),
     dcc.Dropdown(
         id='sig-constructeur-dropdown',
-        options=[{'label': col, 'value': col} for col in SIG_CONSTRUCTEUR_VALUES],
+        options=[{'label': col, 'value': col} for col in CONSTRUCTEUR_VALUES],
         value="None",
         multi=False
     ),
