@@ -4,7 +4,7 @@ from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.graph_objs as go
 
-from var_case import SIG_OBS_VALUES, SIG_ORG_VALUES, PRED_VARIABLES
+from var_case import SIG_OBS_VALUES, SIG_ORG_VALUES, SIG_CONSTRUCTEUR, PRED_VARIABLES
 
 # Initialisation de l'application Dash
 app = dash.Dash(__name__)
@@ -27,6 +27,13 @@ app.layout = html.Div([
         value="None",
         multi=False
     ),
+    html.Label('CONSTRUCTEUR :'),
+    dcc.Dropdown(
+        id='sig-constructeur-dropdown',
+        options=[{'label': col, 'value': col} for col in SIG_CONSTRUCTEUR_VALUES],
+        value="None",
+        multi=False
+    ),
     html.H2('Résultats : '),
     html.H2(children='', id='specify-text', style={"color": "red", "text-decoration": "underline"}),
     dcc.Graph(id='graph-system-n1'),
@@ -45,18 +52,21 @@ app.layout = html.Div([
               Output('graph-type-travail', 'figure'),
               Output('specify-text', 'children'),
               [Input('sig-organe-dropdown', 'value'),
-               Input('sig-obs-dropdown', 'value')])
+               Input('sig-obs-dropdown', 'value'),
+               Input('sig-constructeur-dropdown', 'value')])
 def update_graph(sig_org, sig_obs):
     figures = []
     title = ""
     results = None # query julien script
 
-    if "None" in [sig_org, sig_obs]:
+    if "None" in [sig_org, sig_obs, sig_constructeur]:
         title += "Please specify : "
         if sig_org == "None":
             title += "SIG_ORG "
         if sig_obs == "None":
             title += "SIG_OBS "
+        if sig_constructeur == "None":
+            title += "SIG_CONSTRUCTEUR "
         results = {k: {"": 0.5} for k in PRED_VARIABLES}
 
     for graph in PRED_VARIABLES:
