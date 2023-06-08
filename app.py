@@ -1,19 +1,15 @@
-import sys
 
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output
-import pandas as pd
 import plotly.graph_objs as go
 import projet
 
 from var_case import SIG_OBS_VALUES, SIG_ORG_VALUES, CONSTRUCTEUR_VALUES, PRED_VARIABLES
 
-import pickle
 
 Projet_sujet = projet.Projet()
 
-print("jbze")
 # Initialisation de l'application Dash
 app = dash.Dash(__name__)
 
@@ -71,7 +67,6 @@ def update_graph(sig_org, sig_obs, sig_constructeur):
         for a, b in tup:
             di[a] = b
         return di
-    results = Projet_sujet.afficher_probabilites_tableau(sig_org, sig_obs, sig_constructeur)
 
     if "None" in [sig_org, sig_obs, sig_constructeur]:
         title += "Please specify : "
@@ -82,6 +77,8 @@ def update_graph(sig_org, sig_obs, sig_constructeur):
         if sig_constructeur == "None":
             title += "SIG_CONSTRUCTEUR "
         results = {k: {"": 0.5} for k in PRED_VARIABLES}
+    else:
+        results = Projet_sujet.afficher_probabilites_tableau(sig_org, sig_obs, sig_constructeur)
 
     for graph in PRED_VARIABLES:
         if len(results[graph].keys()) >= 5:
