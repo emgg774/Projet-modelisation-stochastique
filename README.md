@@ -19,6 +19,7 @@ Install requirements
 ```
 pip3 install -r requirements.txt
 ```
+Download your data, such as EQUIPEMENT.csv and OT_ODR.csv.bz2 
 
 Start dash application
 
